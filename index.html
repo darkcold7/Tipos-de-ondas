@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tipos de Ondas - Sintetizador Profesional</title>
+    <style>
+        :root {
+            --bg-color: #121418;
+            --panel-bg: #1e2128;
+            --panel-border: #2a2e35;
+            --accent: #00f0ff;
+            --accent-glow: rgba(0, 240, 255, 0.4);
+            --text-main: #e0e6ed;
+            --text-muted: #8892b0;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Título Principal */
+        .main-title {
+            font-size: 3.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin: 10px 0 30px 0;
+            background: linear-gradient(90deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px var(--accent-glow);
+            text-align: center;
+        }
+
+        /* Contenedor del Sintetizador */
+        .synth-container {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* Pantalla del Osciloscopio */
+        .visualizer-container {
+            width: 100%;
+            height: 200px;
+            background-color: #08090a;
+            border-radius: 8px;
+            border: 2px solid #000;
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .visualizer-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Master Control */
+        .master-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .master-play {
+            background: #111;
+            color: var(--text-main);
+            border: 2px solid var(--accent);
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .master-play:hover {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 25px var(--accent);
+        }
+
+        .master-play.playing {
+            background: #ff0055;
+            border-color: #ff0055;
+            box-shadow: 0 0 25px rgba(255, 0, 85, 0.4);
+            color: white;
+        }
+
+        /* Paneles de Ondas */
+        .channels {
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .channel {
+            flex: 1;
+            min-width: 250px;
+            background: #16181d;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            transition: 0.3s;
+        }
+
+        .channel.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .channel h2 {
+            font-size: 1.2rem;
+            margin: 0 0 20px 0;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .channel.active h2 {
+            color: var(--accent);
+            text-shadow: 0 0 5px var(--accent-glow);
+        }
+
+        .btn-toggle {
+            background: #2a2e35;
+            border: none;
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 25px;
+            transition: 0.2s;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .channel.active .btn-toggle {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* Controles: Perillas (Knobs) y Faders */
+        .controls-row {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            align-items: flex-end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 5;
+        }
+
+        .control-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-value {
+            font-size: 0.85rem;
+            font-family: monospace;
+            background: #000;
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: var(--accent);
+            margin-top: 15px;
+            border: 1px solid #333;
+            min-width: 65px;
+            text-align: center;
+        }
+
+        /* Diseño de la Perilla (Frecuencia) */
+        .knob-base {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #2a2e35, #16181d);
+            box-shadow: 5px 5px 10px #0b0c0e, -5px -5px 10px #21242c;
+            position: relative;
+            cursor: ns-resize;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; /* Evita que el navegador intercepte el toque */
+        }
+
+        .knob-dial {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: #1e2128;
+            border: 2px solid #111;
+            position: relative;
+            transform: rotate(-135deg); 
+            transition: transform 0.05s linear;
+            pointer-events: none;
+        }
+
+        .knob-dial::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 12px;
+            background-color: var(--accent);
+            border-radius: 2px;
+            box-shadow: 0 0 5px var(--accent);
+        }
+
+        /* Diseño del Fader (Amplitud) con contenedor seguro */
+        .fader-container {
+            position: relative;
+            width: 30px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100px; /* Longitud visual */
+            height: 6px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            transform: rotate(-90deg);
+            position: absolute; /* Queda contenido en el div fader-container */
+            margin: 0;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            height: 24px;
+            width: 14px;
+            border-radius: 2px;
+            background: #ccc;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -10px;
+            border: 1px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .channel.active input[type="range"]::-webkit-slider-thumb {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* Marca de agua */
+        #watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 30px;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="main-title">Tipos de Ondas</h1>
+
+    <div class="synth-container">
+        <!-- Visualizador Grafico (Osciloscopio) -->
+        <div class="visualizer-container">
+            <canvas id="oscilloscope"></canvas>
+            <div class="visualizer-overlay"></div>
+        </div>
+
+        <div class="master-section">
+            <button class="master-play" id="masterBtn">Encender Sintetizador</button>
+        </div>
+
+        <div class="channels">
+            <!-- Canal Cuadrada -->
+            <div class="channel" id="ch-square">
+                <h2>Cuadrada</h2>
+                <button class="btn-toggle" data-wave="square">Activar</button>
+                <div class="controls-row">
+                    <div class="control-group">
+                        <div class="control-label">Frecuencia</div>
+                        <div class="knob-base" data-wave="square" data-min="20" data-max="2000" data-val="440">
+                            <div class="knob-dial" id="dial-square"></div>
+                        </div>
+                        <div class="control-value"><span id="val-freq-square">440</span> Hz</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Amplitud</div>
+                        <div class="fader-container">
+                            <input type="range" class="amp-slider" data-wave="square" min="0" max="100" value="50">
+                        </div>
+                        <div class="control-value"><span id="val-amp-square">50</span>%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canal Triangular -->
+            <div class="channel" id="ch-triangle">
+                <h2>Triangular</h2>
+                <button class="btn-toggle" data-wave="triangle">Activar</button>
+                <div class="controls-row">
+                    <div class="control-group">
+                        <div class="control-label">Frecuencia</div>
+                        <div class="knob-base" data-wave="triangle" data-min="20" data-max="2000" data-val="440">
+                            <div class="knob-dial" id="dial-triangle"></div>
+                        </div>
+                        <div class="control-value"><span id="val-freq-triangle">440</span> Hz</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Amplitud</div>
+                        <div class="fader-container">
+                            <input type="range" class="amp-slider" data-wave="triangle" min="0" max="100" value="50">
+                        </div>
+                        <div class="control-value"><span id="val-amp-triangle">50</span>%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canal Diente de Sierra -->
+            <div class="channel" id="ch-sawtooth">
+                <h2>Diente de Sierra</h2>
+                <button class="btn-toggle" data-wave="sawtooth">Activar</button>
+                <div class="controls-row">
+                    <div class="control-group">
+                        <div class="control-label">Frecuencia</div>
+                        <div class="knob-base" data-wave="sawtooth" data-min="20" data-max="2000" data-val="440">
+                            <div class="knob-dial" id="dial-sawtooth"></div>
+                        </div>
+                        <div class="control-value"><span id="val-freq-sawtooth">440</span> Hz</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Amplitud</div>
+                        <div class="fader-container">
+                            <input type="range" class="amp-slider" data-wave="sawtooth" min="0" max="100" value="50">
+                        </div>
+                        <div class="control-value"><span id="val-amp-sawtooth">50</span>%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Marca de agua -->
+    <div id="watermark">DARK</div>
+
+    <script>
+        // Variables globales
+        let audioCtx;
+        let masterGain;
+        let analyser;
+        let isPlaying = false;
+
+        const waves = {
+            square:   { type: 'square', freq: 440, amp: 0.5, active: false, osc: null, gain: null },
+            triangle: { type: 'triangle', freq: 440, amp: 0.5, active: false, osc: null, gain: null },
+            sawtooth: { type: 'sawtooth', freq: 440, amp: 0.5, active: false, osc: null, gain: null }
+        };
+
+        // Inicialización
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.5; 
+                
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                
+                masterGain.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                
+                drawOscilloscope();
+            }
+        }
+
+        // Lógica del Canvas
+        const canvas = document.getElementById('oscilloscope');
+        const canvasCtx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawOscilloscope() {
+            requestAnimationFrame(drawOscilloscope);
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+            
+            canvasCtx.fillStyle = '#08090a';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#00f0ff';
+            canvasCtx.beginPath();
+            
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+            
+            for(let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0; 
+                const y = v * canvas.height / 2;
+                if(i === 0) canvasCtx.moveTo(x, y);
+                else canvasCtx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        }
+
+        // Dibujar línea inicial sin encender
+        canvasCtx.fillStyle = '#08090a';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = '#00f0ff';
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, canvas.height/2);
+        canvasCtx.lineTo(canvas.width, canvas.height/2);
+        canvasCtx.stroke();
+
+        // Control de Reproducción
+        function updateWave(type) {
+            let wave = waves[type];
+            if (wave.active && isPlaying) {
+                if (!wave.osc) {
+                    wave.osc = audioCtx.createOscillator();
+                    wave.gain = audioCtx.createGain();
+                    wave.osc.type = wave.type;
+                    wave.osc.connect(wave.gain);
+                    wave.gain.connect(masterGain);
+                    wave.osc.start();
+                }
+                wave.osc.frequency.setValueAtTime(wave.freq, audioCtx.currentTime);
+                wave.gain.gain.setValueAtTime(wave.amp, audioCtx.currentTime);
+            } else if (wave.osc) {
+                wave.osc.stop();
+                wave.osc.disconnect();
+                wave.gain.disconnect();
+                wave.osc = null;
+                wave.gain = null;
+            }
+        }
+
+        // Botón Principal
+        const masterBtn = document.getElementById('masterBtn');
+        masterBtn.addEventListener('click', async () => {
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                masterBtn.textContent = 'Apagar Sintetizador';
+                masterBtn.classList.add('playing');
+            } else {
+                masterBtn.textContent = 'Encender Sintetizador';
+                masterBtn.classList.remove('playing');
+            }
+            Object.keys(waves).forEach(updateWave);
+        });
+
+        // Botones Activar Ondas (Ahora usan el dataset directo del boton clicleado)
+        document.querySelectorAll('.btn-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.currentTarget.dataset.wave;
+                waves[type].active = !waves[type].active;
+                
+                const channelDiv = document.getElementById(`ch-${type}`);
+                if (waves[type].active) {
+                    channelDiv.classList.add('active');
+                    e.currentTarget.textContent = 'Desactivar';
+                } else {
+                    channelDiv.classList.remove('active');
+                    e.currentTarget.textContent = 'Activar';
+                }
+                if(isPlaying) updateWave(type);
+            });
+        });
+
+        // Lógica blindada para las Perillas (Compatible con táctil y ratón)
+        document.querySelectorAll('.knob-base').forEach(knob => {
+            let isDragging = false;
+            let startY = 0;
+            let currentVal = parseFloat(knob.dataset.val);
+            const min = parseFloat(knob.dataset.min);
+            const max = parseFloat(knob.dataset.max);
+            const type = knob.dataset.wave;
+            const dial = document.getElementById(`dial-${type}`);
+            const display = document.getElementById(`val-freq-${type}`);
+
+            function updateKnobVisual(value) {
+                const percent = (value - min) / (max - min);
+                const degrees = -135 + (percent * 270);
+                dial.style.transform = `rotate(${degrees}deg)`;
+                display.textContent = Math.round(value);
+            }
+
+            updateKnobVisual(currentVal); // Iniciar estado gráfico
+
+            function getClientY(e) {
+                return e.touches ? e.touches[0].clientY : e.clientY;
+            }
+
+            function dragStart(e) {
+                isDragging = true;
+                startY = getClientY(e);
+                document.body.style.cursor = 'ns-resize';
+                if(e.cancelable) e.preventDefault();
+            }
+
+            function dragMove(e) {
+                if (!isDragging) return;
+                if(e.cancelable) e.preventDefault(); // Detiene scroll del celular al girar
+
+                const currentY = getClientY(e);
+                const deltaY = startY - currentY;
+                startY = currentY;
+                
+                currentVal += deltaY * 10; // Multiplicador de sensibilidad
+                
+                if(currentVal > max) currentVal = max;
+                if(currentVal < min) currentVal = min;
+                
+                knob.dataset.val = currentVal;
+                updateKnobVisual(currentVal);
+                
+                waves[type].freq = currentVal;
+                if(isPlaying && waves[type].active && waves[type].osc && audioCtx) {
+                    waves[type].osc.frequency.setValueAtTime(currentVal, audioCtx.currentTime);
+                }
+            }
+
+            function dragEnd() {
+                if(isDragging) {
+                    isDragging = false;
+                    document.body.style.cursor = 'default';
+                }
+            }
+
+            knob.addEventListener('mousedown', dragStart);
+            knob.addEventListener('touchstart', dragStart, { passive: false });
+
+            window.addEventListener('mousemove', dragMove, { passive: false });
+            window.addEventListener('touchmove', dragMove, { passive: false });
+
+            window.addEventListener('mouseup', dragEnd);
+            window.addEventListener('touchend', dragEnd);
+        });
+
+        // Controles de Amplitud (Faders)
+        document.querySelectorAll('.amp-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const type = e.currentTarget.dataset.wave;
+                const val = e.currentTarget.value;
+                const ampVal = val / 100;
+                
+                waves[type].amp = ampVal;
+                document.getElementById(`val-amp-${type}`).textContent = val;
+                
+                if (isPlaying && waves[type].active && waves[type].gain && audioCtx) {
+                    waves[type].gain.gain.setValueAtTime(ampVal, audioCtx.currentTime);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
